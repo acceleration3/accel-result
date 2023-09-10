@@ -1,0 +1,25 @@
+cmake_minimum_required(VERSION 3.10)
+
+project(accel-result CXX)
+
+option(ACCEL_BUILD_TESTS "Build the accompanying tests." ON)
+
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 11)
+
+if(NOT DEFINED ACCEL_MODULES_FOLDER)
+    set(ACCEL_MODULES_FOLDER "${CMAKE_SOURCE_DIR}/external")
+endif()
+
+set(ADDITIONAL_LIBRARIES accel-macros)
+
+include(cmake/FindModule.cmake)
+add_accel_module(accel-macros)
+
+add_library(accel-result INTERFACE)
+target_include_directories(accel-result INTERFACE "include/")
+target_link_libraries(accel-result INTERFACE ${ADDITIONAL_LIBRARIES})
+
+if(ACCEL_BUILD_TESTS)
+    add_subdirectory(tests)
+endif()

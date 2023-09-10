@@ -1,0 +1,96 @@
+#ifndef ACCEL_RESULT
+#define ACCEL_RESULT
+
+#include <functional>
+#include <string>
+
+#include <accel/macros>
+
+namespace accel
+{
+    template<typename EnumT> using error_type_translate_function_t = const char* (*)(EnumT); 
+   
+    template<typename EnumT, error_type_translate_function_t<EnumT> TranslateFunctionT>
+    class error
+    {
+    public:
+        error(const EnumT& type) : m_type(type) {}
+        error(EnumT&& type) : m_type(std::move(type)) {}
+
+        ACC_DEFAULT_COPYABLE(error);
+        ACC_DEFAULT_MOVABLE(error);
+
+        std::string get_message() const { return TranslateFunctionT(m_type); }
+        EnumT get_error_type() const { return m_type; }
+
+        template<typename T> T get_error_code() const { return static_cast<T>(m_type); }
+    
+    private: 
+        EnumT m_type;
+    };
+
+    template<typename T, typename ErrorT>
+    class result
+    {
+    public:
+        result(const T& value) : 
+            m_has_value(true),
+            m_value(value) {}
+        
+        result(T&& value) :
+            m_has_value(true),
+            m_value(std::move(value)) {}
+
+        result(const ErrorT& error) :
+            m_has_value(false),
+            m_error(error) {}
+    
+        result(ErrorT&& error) :
+            m_has_value(false),
+            m_error(std::move(error)) {}
+    
+        ACC_DEFAULT_COPYABLE(result);
+        ACC_DEFAULT_MOVABLE(result);
+
+        bool has_value() const { return m_has_value; }
+
+        T& get_value() 
+        {
+            ACC_ASSERT(m_has_value);
+            return m_value;
+        }
+
+        const T& get_value() const
+        {
+            ACC_ASSERT(m_has_value);
+            return m_value;
+        }
+
+        ErrorT& get_error()
+        {
+            ACC_ASSERT(!m_has_value);
+            return m_error;
+        }
+
+        const ErrorT& get_error() const
+        {
+            ACC_ASSERT(!m_has_value);
+            return m_error;
+        }
+
+        T value_or(T option) const
+        {
+            return m_has_value ? m_value : option;
+        }
+
+    private:
+        bool m_has_value;
+        union
+        {
+            ErrorT m_error;
+            T m_value;
+        };
+    };
+}
+
+#endif
