@@ -18,7 +18,7 @@ static const char* translate_generic_error(generic_error_codes code)
     }
 }
 
-using generic_error = accel::error<generic_error_codes, translate_generic_error>;
+using generic_error = accel::error<generic_error_codes, const char*, translate_generic_error>;
 
 accel::result<int, generic_error> test_function(int param)
 {

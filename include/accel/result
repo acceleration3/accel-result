@@ -5,9 +5,7 @@
 
 namespace accel
 {
-    template<typename EnumT> using error_type_translate_function_t = const char* (*)(EnumT); 
-   
-    template<typename EnumT, error_type_translate_function_t<EnumT> TranslateFunctionT>
+    template<typename EnumT, typename MessageT, MessageT(*TranslateFunctionT)(EnumT)>
     class error
     {
     public:
@@ -17,7 +15,7 @@ namespace accel
         ACC_DEFAULT_COPYABLE(error);
         ACC_DEFAULT_MOVABLE(error);
 
-        const char* get_message() const { return TranslateFunctionT(m_type); }
+        MessageT get_message() const { return TranslateFunctionT(m_type); }
         EnumT get_error_type() const { return m_type; }
 
         template<typename T> T get_error_code() const { return static_cast<T>(m_type); }
