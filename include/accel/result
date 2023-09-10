@@ -2,82 +2,80 @@
 #define ACCEL_RESULT
 
 #include <accel/macros>
+#include <utility>
 
 namespace accel
 {
-    template<typename EnumT, typename MessageT, MessageT(*TranslateFunctionT)(EnumT)>
-    class error
-    {
-    public:
-        error(const EnumT& type) : m_type(type) {}
-        error(EnumT&& type) : m_type(std::move(type)) {}
-
-        ACC_DEFAULT_COPYABLE(error);
-        ACC_DEFAULT_MOVABLE(error);
-
-        MessageT get_message() const { return TranslateFunctionT(m_type); }
-        EnumT get_error_type() const { return m_type; }
-
-        template<typename T> T get_error_code() const { return static_cast<T>(m_type); }
-    
-    private: 
-        EnumT m_type;
-    };
-
     template<typename T, typename ErrorT>
     class result
     {
     public:
-        result(const T& value) : 
-            m_has_value(true),
-            m_value(value) {}
+        explicit result(const T& value) : 
+            m_has_value(true)
+        {
+            new (&m_value) T(value);
+        }
+        
+        explicit result(const ErrorT& error) :
+            m_has_value(false)
+        {
+            new (&m_error) ErrorT(error);
+        }
         
         result(T&& value) :
-            m_has_value(true),
-            m_value(std::move(value)) {}
+            m_has_value(true)
+        {
+            new (&m_value) T(std::move(value));
+        }
 
-        result(const ErrorT& error) :
-            m_has_value(false),
-            m_error(error) {}
-    
         result(ErrorT&& error) :
-            m_has_value(false),
-            m_error(std::move(error)) {}
-    
-        ACC_DEFAULT_COPYABLE(result);
-        ACC_DEFAULT_MOVABLE(result);
+            m_has_value(false)
+        {
+            new (&m_error) ErrorT(std::move(error));
+        }
+
+        result(const result& other) :
+            m_has_value(other.m_has_value)
+        {
+            if (m_has_value)
+                new (&m_value) T(other.m_value);
+            else
+                new (&m_error) ErrorT(other.m_error);
+        }
+
+        result(result&& other) :
+            m_has_value(other.m_has_value)
+        {
+            if (m_has_value)
+                new (&m_value) T(std::move(other.m_value));
+            else
+                new (&m_error) ErrorT(std::move(other.m_error));
+        }
+
+        ~result()
+        {       
+            if (m_has_value)
+                m_value.~T();
+            else
+                m_error.~ErrorT();
+        }
 
         bool has_value() const { return m_has_value; }
+        bool has_error() const { return !m_has_value; }
 
-        T& get_value() 
-        {
-            ACC_ASSERT(m_has_value);
-            return m_value;
-        }
-
-        const T& get_value() const
-        {
-            ACC_ASSERT(m_has_value);
-            return m_value;
-        }
-
-        ErrorT& get_error()
-        {
-            ACC_ASSERT(!m_has_value);
-            return m_error;
-        }
-
-        const ErrorT& get_error() const
-        {
-            ACC_ASSERT(!m_has_value);
-            return m_error;
-        }
+        T& get_value() const { return m_value; }
+        ErrorT get_error() const { return m_error; }
 
         T value_or(T option) const
         {
             return m_has_value ? m_value : option;
         }
 
+        ErrorT error_or(ErrorT error) const
+        {
+            return m_has_value ? error : m_error;
+        }
+        
     private:
         bool m_has_value;
         union
